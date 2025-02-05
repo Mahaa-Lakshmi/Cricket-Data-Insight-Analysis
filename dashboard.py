@@ -75,7 +75,7 @@ match_type = st.sidebar.selectbox("Match Type", ["All", "Test", "ODI", "T20"])
 team = st.sidebar.selectbox("Team", ["All"] + list(load_data("SELECT DISTINCT team1 FROM match_details UNION SELECT DISTINCT team2 FROM match_details")['team1'].sort_values().unique()))
 
 
-tab1, tab2, tab3, tab4 = st.tabs(["Player Performance", "Overall Match Details","Team Performance","Umpiring & Fielding"])
+tab1, tab2, tab3, tab4 = st.tabs(["Player Performance", "Overall Match Details","Team Performance","Umpiring Details"])
 
 
 
@@ -456,22 +456,17 @@ with tab3:
                  #print(df)
                  top_wicket_keeper = df.nlargest(1, 'dismissals')
                  top_batsman = df.nlargest(1, 'total_runs')
-                 top_bowler = df.nlargest(1, 'total_wickets')                
+                 top_bowler = df.nlargest(1, 'total_wickets')              
                  
-                     
                  if not top_wicket_keeper.empty:
                      st.metric("Top Wicket-Keeper", top_wicket_keeper['person_name'].iloc[0], top_wicket_keeper['dismissals'].iloc[0],border=True)
                  else:
                      st.write("No wicket-keeper information available.")
 
-
-
                  if not top_batsman.empty:
                      st.metric("Top Batsman", top_batsman['person_name'].iloc[0], top_batsman['total_runs'].iloc[0],border=True)
                  else:
                      st.write("No batsman information available.")
-
-
 
                  if not top_bowler.empty:
                      st.metric("Top Bowler", top_bowler['person_name'].iloc[0], top_bowler['total_wickets'].iloc[0],border=True)
@@ -485,7 +480,80 @@ with tab3:
     else:
         st.warning("Please choose a team name from the sidebar dropdown")
  
+with tab4:
+    query=f"""select distinct r.person_name
+            from officials o
+            join registry r on o.person_id=r.person_id
+            join match_details md on md.match_id=o.match_ID
+            order by r.person_name;"""
+    official_list=load_data(query)          
+    official_name=st.selectbox("Choose a official name",official_list)
+
+    query_umpire=f"""select r.person_name as umpire,count(md.match_id) as match_per_season,season,md.match_type
+from officials o
+join match_details md on md.match_id = o.match_id
+join registry r on r.person_id=o.person_id
+where r.person_name=%s 
+{ "AND md.match_type = '"+match_type+"'" if match_type != "All" else ""}
+group by r.person_name,season,md.match_type"""
+
+    df_umpire = pd.read_sql(query_umpire,dbm,params=(official_name,))
+    if not df_umpire.empty:
+        df_umpire["processed_season"]=df_umpire['season'].apply(process_season)
+        umpire_season_matrix = df_umpire.pivot_table(index="match_type", columns="processed_season", values="match_per_season", fill_value=0)
+
+        #print(umpire_season_matrix)
+
+        # 2. Create the heatmap
+        fig_umpire_assignments = px.imshow(
+            umpire_season_matrix,
+            labels=dict(x="Season", y="match_type", color="Matches per Season"),  # Set axis labels
+            title="Umpire No. of Match Assignments (by Season)",
+            color_continuous_scale=px.colors.sequential.Viridis,  # Choose a color scale
+            aspect="auto", #Added aspect ratio
+            text_auto=True
+        )
+
+        st.plotly_chart(fig_umpire_assignments)
+
+    col1,col2=st.columns(2)
+    with col1:
+        df=load_data(f"""select official_type,count(*) as match_umpired
+            from officials o
+            join match_details md on md.match_id=o.match_id
+            join registry r on r.person_id=o.person_id
+            where r.person_name=%s
+            { "AND md.match_type = '"+match_type+"'" if match_type != "All" else ""}
+            group by official_type
+            order by match_umpired;""",(official_name,))
+        if not df.empty:
+            fig_role_distribution = px.pie(
+                df,
+                values="match_umpired",
+                names="official_type",
+                title=f"Overall Umpire Role Distribution for AL Hill"  # Or make it dynamic
+            )
+            st.plotly_chart(fig_role_distribution)
     
+    with col2:
+        df=load_data(f"""select (CASE WHEN rg.person_name!=%s THEN rg.person_name ELSE null END) as other_umpires1
+from officials ol
+join registry rg on rg.person_id=ol.person_id
+where match_id in
+(
+select match_id 
+from officials o
+join registry r on r.person_id=o.person_id
+where r.person_name= %s);""",(official_name,official_name,))
+        if not df.empty:
+            counts_df = df['other_umpires1'].value_counts(dropna=True)
+            counts_df_frame = counts_df.to_frame(name='count').reset_index()
+            counts_df_frame=counts_df_frame.nlargest(10,"count")
+            fig = px.pie(counts_df_frame, values='count', names='other_umpires1', title=f'Top 10 Umpire Teams with {official_name}')
+            st.plotly_chart(fig)
+
+
+
 
 
 
