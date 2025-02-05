@@ -65,6 +65,21 @@ def process_json_file(filepath):
                     [str(player_id) for player_id in player_of_match_list if player_id is not None]
                 )
 
+                outcome = d.get("outcome", {})
+                by = outcome.get("by")
+                result = outcome.get("result")
+
+                if by:
+                    by.pop("innings", None)  # Remove "innings" if present (no error if not)
+                    if by: #Check if by is not empty after popping innings
+                        key, value = by.popitem()  # Efficiently get and remove the first item
+                        outcome_type,outcome_value= key, value
+                    else:
+                        return None, None #Return none if by is empty
+                elif result:
+                    outcome_type,outcome_value= "result", result
+                outcome_type,outcome_value= None, None
+
                 match = {
                     "match_id": matchID,
                     "city": d.get('city', None),
@@ -80,8 +95,8 @@ def process_json_file(filepath):
                     "toss_winner": d.get("toss", {}).get("winner", None),
                     "toss_decision": d.get("toss", {}).get("decision", None),
                     "winner": d.get("outcome", {}).get("winner", None), 
-                    "outcome_type" : list(d.get("outcome", {}).get("by", {}).keys())[0] if d.get("outcome", {}).get("by") else d.get("outcome", {}).get("result") if d.get("outcome", {}).get("result") else None,
-                    "outcome_value" : list(d.get("outcome", {}).get("by").values())[0] if d.get("outcome", {}).get("by") else None,
+                    "outcome_type" : outcome_type,
+                    "outcome_value" : outcome_value,
                     "player_of_match": player_of_match_str if player_of_match_str else None,
                     "balls_per_over": d.get("balls_per_over", None)
                 }
@@ -123,6 +138,12 @@ def process_json_file(filepath):
                         for ball_count, delivery in enumerate(over.get('deliveries', []), start=1):
                             if ball_count > balls_limit: continue  # Skip extra miscounted deliveries
                             powerplay_type = next((t for t, (s, e) in powerplays.items() if s <= over_num <= e), 'none')
+                            
+                            if len(delivery.get('wickets', {})) > 0:
+                                 fielders = ', '.join(registry.get(f['name']) for f in delivery['wickets'][0].get('fielders', [])) if delivery['wickets'][0].get('fielders') else None
+                            else:
+                                fielders = None
+                            
                             delivery_data = {
                                 "match_id": matchID,
                                 "innings": inning_count,
@@ -138,7 +159,8 @@ def process_json_file(filepath):
                                 'powerplayed': 'yes' if powerplay_type != 'none' else 'no',
                                 'powerplayed_type': powerplay_type,
                                 "player_out": registry.get(delivery.get("wickets", [{}])[0].get("player_out")),
-                                "dismissal_kind": delivery.get("wickets", [{}])[0].get("kind")
+                                "dismissal_kind": delivery.get("wickets", [{}])[0].get("kind"),
+                                "fielders_involved":fielders
                             }
                             insert_with_autocommit(delivery_data, "deliveries", mydb)
                 
