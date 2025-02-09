@@ -340,19 +340,22 @@ ORDER BY team;"""
             fig.update_layout(xaxis_title="team", yaxis_title="win_percentage") # Axis labels
             st.plotly_chart(fig)
 
-        query=f"""select d.match_id,sum(d.runs_total) as total_runs_by_team,team1,team2,season,match_type
+        #
+        query=f"""select sum(d.runs_total) as total_runs_by_team,season,match_type
         FROM deliveries d
         JOIN match_details md ON d.match_id = md.match_id
         WHERE 1=1
         { "AND md.match_type = '"+match_type+"'" if match_type != "All" else ""} 
         { "AND (team1 = '"+team+"' or team2='"+team+"')" if team != "All" else ""}
-        group by d.match_id;"""
+        group by season
+        ;"""
 
         df=load_data(query)
         #print(df)
         if not df.empty:
             df['processed_season'] = df['season'].apply(process_season)
-            #print(df)
+
+                     
 
             fig = px.area(df, x="processed_season", y="total_runs_by_team", color="match_type", line_group="match_type")
             #fig.update_traces(textposition="bottom right")

@@ -1,0 +1,9 @@
+pandas
+matplotlib
+seaborn
+mysql-connector-python
+dask[complete]
+openpyxl
+streamlit
+plotly
+requests
