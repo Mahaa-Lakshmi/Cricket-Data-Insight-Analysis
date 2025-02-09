@@ -102,7 +102,6 @@ Each JSON file represents a cricket match and contains data such as:
     * Data processing and transformation scripts.
     * SQL insertion and query execution scripts.
     * Streamlit application code.
-* **SQL Database:** MySQL database.
 * **SQL Query File:** SQL queries used for table creations and data analysis.
 * **Streamlit Application:** Deployed or readily runnable Streamlit application.
 * **Power BI Dashboard:** Power BI file (.pbix).
