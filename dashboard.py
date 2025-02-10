@@ -207,8 +207,9 @@ with tab1:
         top_wicket_takers=load_data(query)
         #print(top_wicket_takers)
         top_wicket_takers['processed_season'] = top_wicket_takers['season'].apply(process_season)
-        #print(top_wicket_takers)
-        fig = px.line(top_wicket_takers, x="processed_season", y="total_wickets", text="processed_season",title="Top Wickets by season")
+        #top_wicket_takers.groupby("processed_season").agg({"total_wickets":"sum"}).apply(lambda x: print(x))
+        wickets_by_season = top_wicket_takers.groupby("processed_season")["total_wickets"].sum().reset_index()
+        fig = px.line(wickets_by_season, x="processed_season", y="total_wickets", text="processed_season",title="Top Wickets by season")
         fig.update_traces(textposition="bottom right")
         st.plotly_chart(fig)
 
@@ -347,7 +348,7 @@ ORDER BY team;"""
         WHERE 1=1
         { "AND md.match_type = '"+match_type+"'" if match_type != "All" else ""} 
         { "AND (team1 = '"+team+"' or team2='"+team+"')" if team != "All" else ""}
-        group by season
+        group by season,match_type
         ;"""
 
         df=load_data(query)
@@ -554,9 +555,3 @@ where r.person_name= %s);""",(official_name,official_name,))
             counts_df_frame=counts_df_frame.nlargest(10,"count")
             fig = px.pie(counts_df_frame, values='count', names='other_umpires1', title=f'Top 10 Umpire Teams with {official_name}')
             st.plotly_chart(fig)
-
-
-
-
-
-

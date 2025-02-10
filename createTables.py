@@ -11,7 +11,7 @@ cnx = db.connect(
 db_curr = cnx.cursor()
 
 # Create database if it doesn't exist
-db_curr.execute("CREATE DATABASE IF NOT EXISTS cricket_dataset_practice")
+db_curr.execute("CREATE DATABASE IF NOT EXISTS cricket_dataset_practice1")
 
 # Connect to the database
 cnx = db.connect(
@@ -19,7 +19,7 @@ cnx = db.connect(
     port=3306,
     user="root",
     password="root",
-    database="cricket_dataset_practice",
+    database="cricket_dataset_practice1",
     autocommit=True
 )
 
@@ -52,10 +52,7 @@ db_curr.execute("""CREATE TABLE match_details (
     outcome_type VARCHAR(255),
     outcome_value VARCHAR(255),
     player_of_match VARCHAR(255),  -- Can be NULL
-    balls_per_over INT,
-    FOREIGN KEY (player_of_match) REFERENCES registry(person_id)
-    ON UPDATE CASCADE  -- Update match_details if person_id changes
-    ON DELETE SET NULL -- Set player_of_match to NULL if person is deleted
+    balls_per_over INT
 );""")
 #db_curr.execute("""DESC match_details;""")
 #print([i[0] for i in db_curr.fetchall()],"\n","match_details created!")
